@@ -1,3 +1,4 @@
+from sklearn.ensemble import RandomForestClassifier
 import math
 import json
 import editdist
@@ -22,15 +23,15 @@ def load_json(file_name):
 
 # Load in the json files
 # Load in the matchs
-locu = load_json('locu_train.json')  
-four = load_json('foursquare_train.json') 
+locu = load_json('locu_train_hard.json')  
+four = load_json('foursquare_train_hard.json') 
 
-locu_test = load_json('locu_test.json')  
-four_test = load_json('foursquare_test.json') 
+locu_test = load_json('locu_test_hard.json')  
+four_test = load_json('foursquare_test_hard.json') 
 
 # Read in matchs
 matches = {}
-with file("matches_train.csv", 'r') as f:
+with file("matches_train_hard.csv", 'r') as f:
     next(f)
     for line in f:
         (locu_id, four_id) = line.strip().split(",")
@@ -64,10 +65,20 @@ def distance(p1, p2):
 def jaccard_score(p1,p2,fields, n = 4):
     name1 = " ".join([p1[x] for x in fields])
     name2 = " ".join([p2[x] for x in fields])
-    set1 = set.union(*[char_splitter(x, n) for x in name1.lower().split()])
-    set2 = set.union(*[char_splitter(x, n) for x in name2.lower().split()])
+    
+    if name1 == "":
+        set1 = set()
+    else:
+        set1 = set.union(*[char_splitter(x, n) for x in name1.lower().split()])
+    if name2 == "":
+        set2 = set()
+    else:
+        set2 = set.union(*[char_splitter(x, n) for x in name2.lower().split()])
+
     c = set1.intersection(set2)
-    return float(len(c)) / (len(set1) + len(set2) - len(c))
+    denom = (len(set1) + len(set2) - len(c))
+
+    return 0 if denom == 0 else float(len(c)) / denom
 
 def compute_weight_matrix(locu, four, score):
     res = np.zeros((len(locu), len(four)))
@@ -81,10 +92,12 @@ def compute_weight_matrix(locu, four, score):
 def predict(locu, four, score):
     weights = compute_weight_matrix(locu, four, score)
     matching = hungarian.lap(-weights)[0]
+    res = [(weights[i][matching[i]], (i, matching[i])) \
+            for i in range(len(matching))]
 
-    return matching
+    return res 
 
-def write_matching(locu, four, matching, file_name = "matches_test.csv", debug = False):
+def write_matching(locu, four, matching, file_name = "matches_test_hard.csv", debug = False):
     with open(file_name, 'w') as out:
         out.write("locu_id,foursquare_id\n")
         for i in range(len(matching)):
@@ -99,14 +112,20 @@ def score_matching(locu, four, pred_matching, true_matching):
     falsePos = 0
     truePos = 0
 
-    for i in range(len(pred_matching)):
-        if (true_matching[locu[i]["id"]] == four[pred_matching[i]]["id"]):
+    for (i,j) in pred_matching:
+        if locu[i]["id"] in true_matching and \
+                (true_matching[locu[i]["id"]] == \
+                    four[j]["id"]):
             truePos = truePos + 1
         else:
             falsePos = falsePos + 1
+            print_obj(locu[i])
+            print_obj(four[matching[i]])
+            print("\n")
+
 
     precision = truePos / float(truePos + falsePos)
-    recall = truePos / float(len(locu))
+    recall = truePos / float(len(true_matching))
     fmeas = (2.0 * precision * recall) / (precision + recall)
 
     print "TP = ",truePos,"FP = ",falsePos,"PREC = ",precision,"RECALL = ",recall,"F = ",fmeas
@@ -122,11 +141,57 @@ matching = predict(locu_test, four_test, \
 
 print "Writing matching"
 write_matching(locu_test, four_test, matching)
+
+res = predict(locu, four, \
+          lambda x,y: jaccard_score(x, y, ["name", "street_address"]))
+
+for thresh in np.linspace(0, 0.9, 20):
+    truncated_matches = [x[1] for x in res if x[0] > thresh]
+    score_matching(locu, four, truncated_matches, matches)
+
+
+Generate training data
+Have to use CV? For now no, hopefully no overfitting.
 """
 
-matching = predict(locu, four, \
-                lambda x,y: jaccard_score(x, y, ["name", "street_address"]))
-score_matching(locu, four, matching, matches)
+def sim(x, y):
+    return [jaccard_score(x, y, ["name"]), \
+            jaccard_score(x, y, ["street_address"])]
+
+def featurize(locu, four, sim):
+    X = []
+    y = [] 
+    index = []
+    for i in range(len(locu)):
+        for j in range(len(four)):
+            X.append(sim(locu[i], four[j]))
+            if locu[i]["id"] in matches:
+                y.append(matches[locu[i]["id"]] == four[j]["id"])
+            else:
+                y.append(False)
+            index.append((i, j))
+    return (X, y, index)
+
+(X, y, index) = featurize(locu, four, sim)
+clf = RandomForestClassifier(n_estimators = 10)
+clf = clf.fit(X, y)
+p = clf.predict_proba(X)
+
+weights = np.zeros((len(locu), len(four)))
+for k in range(len(p)): 
+    (i, j) = index[k]
+    weights[i][j] = p[k][1]
+    
+matching = hungarian.lap(-weights)[0]
+res = [(weights[i][matching[i]], (i, matching[i])) \
+        for i in range(len(matching))]
+
+for thresh in np.linspace(0, 0.9, 10):
+    truncated_matches = [x[1] for x in res if x[0] > thresh]
+    score_matching(locu, four, truncated_matches, matches)
+
+
+
 
 """
 for loop in range(0,10,1):
