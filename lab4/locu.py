@@ -5,14 +5,6 @@ import editdist
 import hungarian
 import numpy as np
 
-"""
-Required packages:
-    numpy
-    hungarian
-    json
-
-"""
-
 def print_obj(json_obj):
     print json.dumps(json_obj, sort_keys = True, indent = 4, separators = (',', ': '))
 
@@ -51,6 +43,17 @@ def char_splitter(s, n):
     for i in range(len(s) - n + 1):
         res.add(s[i:(i+n)])
     return res
+
+def compute_equal_phones(x, y):
+    phone_x = x["phone"]
+    phone_y = y["phone"]
+
+    if phone_x is None and phone_y is None:
+        return 1
+    if phone_x is None or phone_y is None:
+        return 0
+    phone_y = phone_y[1:4] + phone_y[6:9] + phone_y[10:]
+    return 1 if phone_x == phone_y else 0 
 
 def distance(p1, p2):
     lat1 = p1["latitude"]
@@ -97,15 +100,26 @@ def predict(locu, four, score):
 
     return res 
 
+def weights_to_matching(p, index, size):
+    weights = np.zeros((size, size))
+    for k in range(len(p)): 
+        (i, j) = index[k]
+        weights[i][j] = p[k][1]
+        
+    matching = hungarian.lap(-weights)[0]
+    res = [(weights[i][matching[i]], (i, matching[i])) \
+            for i in range(len(matching))]
+    return res
+
 def write_matching(locu, four, matching, file_name = "matches_test_hard.csv", debug = False):
     with open(file_name, 'w') as out:
         out.write("locu_id,foursquare_id\n")
-        for i in range(len(matching)):
-            out.write("%s,%s\n" % (locu[i]["id"], four[matching[i]]["id"])) 
+        for (i, j) in matching:
+            out.write("%s,%s\n" % (locu[i]["id"], four[j]["id"])) 
             
             if debug:
                 print_obj(locu[i])
-                print_obj(four[matching[i]])
+                print_obj(four[j])
                 print("\n")
 
 def score_matching(locu, four, pred_matching, true_matching):
@@ -156,7 +170,8 @@ Have to use CV? For now no, hopefully no overfitting.
 
 def sim(x, y):
     return [jaccard_score(x, y, ["name"]), \
-            jaccard_score(x, y, ["street_address"])]
+            jaccard_score(x, y, ["street_address"]), \
+            compute_equal_phones(x, y)]
 
 def featurize(locu, four, sim):
     X = []
@@ -173,23 +188,22 @@ def featurize(locu, four, sim):
     return (X, y, index)
 
 (X, y, index) = featurize(locu, four, sim)
-clf = RandomForestClassifier(n_estimators = 10)
+clf = RandomForestClassifier(n_estimators = 64)
 clf = clf.fit(X, y)
-p = clf.predict_proba(X)
 
-weights = np.zeros((len(locu), len(four)))
-for k in range(len(p)): 
-    (i, j) = index[k]
-    weights[i][j] = p[k][1]
-    
-matching = hungarian.lap(-weights)[0]
-res = [(weights[i][matching[i]], (i, matching[i])) \
-        for i in range(len(matching))]
+(X_test, _, index_test) = featurize(locu_test, four_test, sim)
+p = clf.predict_proba(X_test)
 
+res = weights_to_matching(p, index, len(locu_test))
+truncated_matches = [x[1] for x in res if x[0] > 0.1]
+write_matching(locu_test, four_test, truncated_matches)
+
+"""
 for thresh in np.linspace(0, 0.9, 10):
     truncated_matches = [x[1] for x in res if x[0] > thresh]
+    print(thresh)
     score_matching(locu, four, truncated_matches, matches)
-
+"""
 
 
 
