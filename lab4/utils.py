@@ -7,14 +7,29 @@ def print_obj(json_obj):
 
 def load_json(file_name):
     with file(file_name, 'r') as f:
-        res = json.load(f)
+        json_objects = json.load(f)
+
+    res = {}
+    for o in json_objects:
+        res[o["id"]] = o
+
     return res
 
-def write_matching(locu, four, matching, file_name = "matches_test_hard.csv", debug = False):
+def read_matches(file_name):
+    matches = {}
+    with file(file_name, 'r') as f:
+        next(f)
+        for line in f:
+            (locu_id, four_id) = line.strip().split(",")
+            matches[(locu_id, four_id)] = 1 
+    return matches
+
+def write_matching(matching, thresh, file_name = "matches_test_hard.csv", debug = False):
     with open(file_name, 'w') as out:
         out.write("locu_id,foursquare_id\n")
-        for (i, j) in matching:
-            out.write("%s,%s\n" % (locu[i]["id"], four[j]["id"])) 
+        for (k, v) in matching.iteritems():
+            if v > thresh: 
+                out.write("%s,%s\n" % k) 
             
             if debug:
                 print_obj(locu[i])
@@ -62,7 +77,7 @@ def distance(p1, p2):
     y = lat2 - lat1
     return math.sqrt(x*x + y*y)
 
-def jaccard_score(p1,p2,fields, n = 4):
+def jaccard_char_score(p1,p2,fields, n = 4):
     name1 = " ".join([p1[x] for x in fields])
     name2 = " ".join([p2[x] for x in fields])
     
@@ -74,6 +89,24 @@ def jaccard_score(p1,p2,fields, n = 4):
         set2 = set()
     else:
         set2 = set.union(*[char_splitter(x, n) for x in name2.lower().split()])
+
+    c = set1.intersection(set2)
+    denom = (len(set1) + len(set2) - len(c))
+
+    return 0 if denom == 0 else float(len(c)) / denom
+
+def jaccard_score(p1,p2,field):
+    name1 = p1[field] 
+    name2 = p2[field]
+    
+    if name1 == "":
+        set1 = set()
+    else:
+        set1 = set(name1.lower().split())
+    if name2 == "":
+        set2 = set()
+    else:
+        set2 = set(name2.lower().split())
 
     c = set1.intersection(set2)
     denom = (len(set1) + len(set2) - len(c))
