@@ -104,7 +104,7 @@ four_test = utils.load_json('foursquare_test_hard.json')
 locu_easy = utils.load_json("locu_train.json")
 four_easy = utils.load_json("foursquare_train.json")
 
-# Read in matchs
+# Read in matches
 matches_hard = utils.read_matches("matches_train_hard.csv")
 
 # Remove crappy data from gold standard
@@ -128,34 +128,47 @@ def sim(x, y):
             1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
             1 if (x["name"] == y["name"]) else 0]
 
+import sys
+
+sys.stderr.write( "Featurizing easy dataset..." )
 (X_easy, index_easy) = featurize(locu_easy, four_easy, sim)
 y_easy = get_y(index_easy, matches_easy)
+sys.stderr.write( "done.\n" )
 
+
+sys.stderr.write( "Featurizing hard dataset..." )
 (X, index) = featurize(locu, four, sim)
 y = get_y(index, matches_hard) 
+sys.stderr.write( "done.\n" )
+
 #clf = LogisticRegression() 
+
 clf = RandomForestClassifier(n_estimators = 64, n_jobs = 4)
 
 X_tot = X + X_easy
 y_tot = y + y_easy
 
+sys.stderr.write( "Fitting classifier..." )
 clf = clf.fit(X_tot, y_tot)
+sys.stderr.write( "done.\n" )
 
 ## Test on training
+sys.stderr.write( "Predicting on test data..." )
 p = clf.predict_proba(X)
+sys.stderr.write( "done.\n" )
 res = weights_to_matching(p, index)
 
 for thresh in np.linspace(0, .9, 20): 
     print(thresh)
     missed = score_matching(res, matches_hard, thresh)
-"""
+
     # Print missed matches
     for (k_a, k_b) in missed:
         utils.print_obj(locu[k_a])
         utils.print_obj(four[k_b])
         print(res[(k_a, k_b)])
         print("\n")
-"""
+
 ## Test on testing
 thresh = 0.4
 (X_test, index_test) = featurize(locu_test, four_test, sim)

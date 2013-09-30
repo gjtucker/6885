@@ -1,5 +1,4 @@
 import math
-import editdist
 import json
 
 def print_obj(json_obj):
@@ -63,6 +62,21 @@ def compute_equal_phones(x, y):
         return 0
     phone_y = phone_y[1:4] + phone_y[6:9] + phone_y[10:]
     return 1 if phone_x == phone_y else 0 
+
+
+def jaccard_words(p1, p2):
+    # lat1 = p1["latitude"]
+    # lon1 = p1["longitude"]
+    # lat2 = p2["latitude"]
+    # lon2 = p2["longitude"]
+
+    # if lat1 is None:
+    #     return 10
+
+    # x = (lon2 - lon1) * math.cos((lat1 + lat2)/2)
+    # y = lat2 - lat1
+    # return math.sqrt(x*x + y*y)
+    pass
 
 def distance(p1, p2):
     lat1 = p1["latitude"]
