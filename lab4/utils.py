@@ -1,5 +1,6 @@
 import math
 import json
+from tfidf import Tfidf
 
 def print_obj(json_obj):
     print json.dumps(json_obj, sort_keys = True, indent = 4, separators = (',', ': '))
@@ -130,7 +131,7 @@ def jaccard_score(p1,p2,field):
 
 def jaccard_score_tfidf(locu, four, p1,p2,field):
     #make a tfidf object so that we don't need to re-compute the list of all names every time
-    tfidf = new Tfidf(locu, four,field)
+    tfidf = Tfidf(locu, four,field)
 
     name1 = p1[field] 
     name2 = p2[field]

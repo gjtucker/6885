@@ -18,10 +18,36 @@ def compute_equal_field( locu_record, foursquare_record, field_name ):
         return 1.0
     else:
         return 0.0
+def jaccard_strings( field1, field2 ):
+    name1 = field1
+    name2 = field2
     
+    if name1 == "":
+        set1 = set()
+    else:
+        set1 = set(name1.lower().split())
+    if name2 == "":
+        set2 = set()
+    else:
+        set2 = set(name2.lower().split())
 
+    c = set1.intersection(set2)
+    denom = (len(set1) + len(set2) - len(c))
+
+    return 0 if denom == 0 else float(len(c)) / denom
+
+def get_street_without_number( record ):
+    street_address = record['street_address']
+    if len( street_address  )== 0:
+           return street_address
+    else:
+        try:
+            float( street_address.split()[0] )
+            return " ".join( street_address.split()[1:] )
+        except ValueError:
+            return street_address
+        
 # <codecell>
-
 
 # <codecell>
 

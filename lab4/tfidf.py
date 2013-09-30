@@ -11,8 +11,10 @@ class Tfidf:
 
     def get_listofdocs(self, locu, four, field):
         docs = []
-        docs += [self.get_cleanwords(a[field]) for (k_a, a) in locu]
-        docs += [self.get_cleanwords(b[field]) for (k_b, b) in four]
+        docs += [self.get_cleanwords(a[field]) for (k_a, a) in locu.iteritems()]
+        docs += [self.get_cleanwords(b[field]) for (k_b, b) in four.iteritems()]
+
+
         return docs
 
     ## major public method
@@ -39,10 +41,14 @@ class Tfidf:
         for document in list_of_docs:
             if self.freq(word, document) > 0:
                 count += 1
-        return count
+        return count + 1
      
      
     def idf(self, word, list_of_docs):
+        if self.num_docs_containing( word, list_of_docs ) == 0:
+            print word
+            import pdb
+            pdb.set_trace()
 
         return math.log(len(list_of_docs) /
                 float(self.num_docs_containing(word, list_of_docs)))
@@ -70,4 +76,4 @@ def unit_test():
     outcome = 0 if uscore == 0 else float(iscore) / uscore
     print "score", outcome
 
-unit_test()
+#unit_test()
