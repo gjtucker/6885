@@ -129,7 +129,6 @@ def jaccard_score(p1,p2,field):
     return 0 if denom == 0 else float(len(c)) / denom
 
 
-
 def faster_jaccard_score_tfidf( p1, p2, field, tfidf ):
     name1 = p1[field] 
     name2 = p2[field]

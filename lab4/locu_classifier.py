@@ -13,6 +13,7 @@ def run_classifier_learning(X, y, models, file_name, n_jobs = 5, \
     best_score = 0
     best_model = None
     for (name, model) in models.iteritems():
+        sys.stderr.write("CV on model %s\n" % name)
         score = np.mean(cross_validation.cross_val_score(model, X, y, \
                 cv = 10, n_jobs = n_jobs))
         if score > best_score:
@@ -56,9 +57,9 @@ def get_y(index, matches):
 
     for (k_a, k_b) in index:
         if (k_a, k_b) in matches:
-            y.append(1)
+            y.append(True)
         else:
-            y.append(0)
+            y.append(False)
     return y
 
 # ----------------
@@ -92,10 +93,16 @@ del matches_hard[("edeba23f215dcc702220", "51a11cbc498e4083823909f1")]
 matches_easy = utils.read_matches("matches_train.csv")
 matches_easy_test = utils.read_matches("matches_test.csv")
 
+#get word statistics for IDF-type features
+sys.stderr.write( "Getting tf-idf statistics..." )
+tfidf_obj = Tfidf( locu, four, "name" )
+sys.stderr.write( "done.\n" )
+
+
 def sim(x, y):
     return [utils.jaccard_char_score(x, y, ["name"]), \
             utils.jaccard_char_score(x, y, ["street_address"]), \
-            #utils.jaccard_score_tfidf(locu, four, x, y, "name"), \
+            utils.faster_jaccard_score_tfidf(x, y, "name", tfidf_obj), \
             utils.jaccard_score(x, y, "street_address"), \
             utils.compute_equal_phones(x, y), \
             utils.distance(x, y), \
@@ -137,5 +144,5 @@ clf = RandomForestClassifier(n_estimators = 64, n_jobs = 4)
 sys.stderr.write( "Fitting classifier..." )
 models = {"RF trees = 64" : clf, \
         "RF trees = 32" : RandomForestClassifier(n_estimators = 32, n_jobs = 4)}
-(model, score) = run_classifier_learning(X_tot, y_tot, models, "tmp.pkl")
+(model, score) = run_classifier_learning(X_tot, np.array(y_tot), models, "tmp.pkl", n_jobs = 1)
 sys.stderr.write( "done.\n" )
