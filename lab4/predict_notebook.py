@@ -188,9 +188,9 @@ def sim(x, y):
             #utils.jaccard_score(x, y, "street_address"), \
             #utils.compute_equal_phones(x, y), \
             utils.distance(x, y), \
-            #1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
-            #1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
-            #1 if (x["name"] == y["name"]) else 0, \
+            1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
+            1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
+            1 if (x["name"] == y["name"]) else 0, \
             #feature_library.compute_equal_website( x, y ) \
             ]
 
@@ -201,7 +201,6 @@ sys.stderr.write( "Featurizing easy dataset..." )
 y_easy = get_y(index_easy, matches_easy)
 sys.stderr.write( "done.\n" )
 
-
 sys.stderr.write( "Featurizing hard dataset..." )
 (X, index) = featurize(locu, four, sim)
 y = get_y(index, matches_hard) 
@@ -210,10 +209,9 @@ sys.stderr.write( "done.\n" )
 X_tot = X + X_easy
 y_tot = y + y_easy
 
-#clf = LogisticRegression() 
+clf = LogisticRegression() 
 
-clf = RandomForestClassifier(n_estimators = 10, n_jobs = 2)
-
+#clf = RandomForestClassifier(n_estimators = 16, n_jobs = 1)
 
 sys.stderr.write( "Fitting classifier..." )
 clf = clf.fit(X_tot, y_tot)
@@ -239,10 +237,10 @@ for thresh in np.linspace(0, .9, 5):
 # <codecell>
 
 ## Test on testing
-thresh = 0.4
-(X_test, index_test) = featurize(locu_test, four_test, sim)
-p = clf.predict_proba(X_test)
+#bthresh = 0.4
+#(X_test, index_test) = featurize(locu_test, four_test, sim)
+#p = clf.predict_proba(X_test)
 
-res = weights_to_matching(p, index_test)
-utils.write_matching(res, thresh)
+#res = weights_to_matching(p, index_test)
+#utils.write_matching(res, thresh)
 
