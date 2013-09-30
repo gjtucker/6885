@@ -121,6 +121,7 @@ matches_easy = utils.read_matches("matches_train.csv")
 def sim(x, y):
     return [utils.jaccard_char_score(x, y, ["name"]), \
             utils.jaccard_char_score(x, y, ["street_address"]), \
+            utils.jaccard_score_tfidf(locu, four, x, y, ["name"]), \
             utils.jaccard_score(x, y, "street_address"), \
             utils.compute_equal_phones(x, y), \
             utils.distance(x, y), \
