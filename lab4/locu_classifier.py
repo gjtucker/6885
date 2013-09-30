@@ -15,7 +15,7 @@ def run_classifier_learning(X, y, models, file_name, n_jobs = 5, \
     for (name, model) in models.iteritems():
         sys.stderr.write("CV on model %s\n" % name)
         score = np.mean(cross_validation.cross_val_score(model, X, y, \
-                cv = 10, n_jobs = n_jobs))
+                cv = 2, n_jobs = n_jobs))
         if score > best_score:
             best_score = score
             best_model = name 
@@ -80,6 +80,11 @@ four_easy_test = utils.load_json("foursquare_test.json")
 
 # Read in matches
 matches_hard = utils.read_matches("matches_train_hard.csv")
+
+#get word statistics for IDF-type features                                                                                              
+sys.stderr.write( "Getting tf-idf statistics..." )
+tfidf_obj = Tfidf( locu, four, "name" )
+sys.stderr.write( "done.\n" )
 
 # Remove crappy data from gold standard
 del matches_hard[("5f3fd107090d0ddc658b", "51ce011a498ed8dfb15381bb")]
