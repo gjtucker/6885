@@ -125,7 +125,7 @@ except IOError:
     sys.stderr.write( "done.\n" )
 
     X_tot = X + X_easy + X_easy_test
-    y_tot = y + y_easy + X_easy_test
+    y_tot = y + y_easy + y_easy_test
     
     with open("working/locu_classifier.cache", "wb") as out:
         cPickle.dump((X_tot, y_tot), out)

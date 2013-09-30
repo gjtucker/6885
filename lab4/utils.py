@@ -129,6 +129,31 @@ def jaccard_score(p1,p2,field):
     return 0 if denom == 0 else float(len(c)) / denom
 
 
+
+def faster_jaccard_score_tfidf( p1, p2, field, tfidf ):
+    name1 = p1[field] 
+    name2 = p2[field]
+    
+    if name1 == "":
+        set1 = set()
+    else:
+        set1 = set(name1.lower().split())
+    if name2 == "":
+        set2 = set()
+    else:
+        set2 = set(name2.lower().split())
+
+    i = list(set1.intersection(set2))
+    u = list(set1.union(set2))
+    #compute idf score (decided to ignore tf)
+    iscore = sum([tfidf.get_score(word) for word in i])
+    uscore = sum([tfidf.get_score(word) for word in u])
+
+    #import pdb
+    #pdb.set_trace()
+
+    return 0 if uscore == 0 else float(iscore) / uscore
+
 def jaccard_score_tfidf(locu, four, p1,p2,field):
     #make a tfidf object so that we don't need to re-compute the list of all names every time
     tfidf = Tfidf(locu, four,field)
