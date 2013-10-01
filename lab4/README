@@ -1,5 +1,9 @@
 To test, run:
 
+bash run.sh
+
+If you already have the model folder with a file called "matcher.pkl", run:
+
 python locu_predict.py models/matcher.pkl locu_file foursquare_file match_output 
 
 ======
@@ -29,6 +33,8 @@ locu_predict.py
 
 Here's an example:
 
+mkdir models
+mkdir working
 python locu_classifier.py models/classifier.pkl
 python locu_matching.py models/classifier.pkl models/matcher.pkl
 python locu_predict.py models/matcher.pkl locu_test_hard.json foursquare_test_hard.json leaderboard_matching.csv
