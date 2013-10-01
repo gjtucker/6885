@@ -2,7 +2,6 @@ import utils
 import hungarian
 import numpy as np
 import sys
-import cPickle
 from tfidf import Tfidf
 from sklearn.externals import joblib
 
