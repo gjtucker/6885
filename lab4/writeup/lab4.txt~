@@ -1,0 +1,19 @@
+# Lab 4 Writeup
+
+## Your user name and registered email address on the competition site.
+## A list of your teammates.
+
+Our team consisted of the following two people:
+William Li - wpli@mit.edu
+George Tucker - gjtucker@mit.edu
+
+##Answers to the following questions:
+
+### Describe your entity resolution technique, as well as its precision, recall, and F1 score.
+
+We treated this entity resolution task as a supervised learning problem, in which the we learn a "goodness of match" score between an entity in the Locu dataset and an entity in the Foursquare dataset. tthe 
+
+### What were the most important features that powered your technique?
+
+
+### How did you avoid pairwise comparison of all venues across both datasets?

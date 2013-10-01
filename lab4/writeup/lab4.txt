@@ -1,0 +1,122 @@
+# Lab 4 Writeup
+
+## Your user name and registered email address on the competition site.
+## A list of your teammates.
+
+Our team consisted of the following two people:
+William Li - wpli@mit.edu
+George Tucker - gjtucker@mit.edu
+
+## Answers to the following questions:
+
+### Describe your entity resolution technique, as well as its
+    precision, recall, and F1 score.
+
+We treated this entity resolution task as a supervised learning
+problem, in which the we learn a "goodness of match" score between an
+entity in the Locu dataset and an entity in the Foursquare dataset. We
+then use this score in our system to find the most likely matches, and
+set a threshold to control precision/recall. Specifically, we do the following:
+
+1. We extract several features from all possible pairs of entities, including: 
+
+* equality of name;
+
+* equality of street address;
+
+* equality of phone number (after cleaning both phone numbers in the pair to be ten digits long);
+
+* Jaccard similarity of the words in the street address;
+
+* Jaccard similarity of character four-grams in the name and street
+  address;
+
+* binary features indicating whether street address and phone number
+  are empty fields;
+
+* geographical distance between the two entities, calculated from
+  their latitude and longitude;
+
+* term frequency-inverse document frequency-based Jaccard similarity
+  on name, to decrease the weight on words that commonly occur (like "restaurant")
+
+2. We train a random forest on these features to learn a "matching score" for each possible pair.
+
+3. We run Knuth's Hungarian algorithm (Munkres' algorithm) for the
+assignment problem -- we want to choose the set of pairs that
+maximizes the score. This is the task of finding the maximum weighted
+bipartite matching between the two datasets. We can do this because
+there is a maximum of one match per entity.
+
+4. Since we know that not all entities have matches in the dataset
+have a match, we need to set a threshold to exclude some pairs. We do
+this through a subset of our training data.
+
+5. Our system uses cross validation to determine the number of
+features to use in finding the best split. We try considering all
+features, log2(features), and sqrt(features). We then pick the best
+model for the test data.
+
+ 
+### What were the most important features that powered your technique?
+
+Geographical distance turns out to be a particularly useful and able
+to handle some of the errors associated with name-based similarity
+methods. 
+
+In general, we found that the equality and Jaccard similarity features
+were useful. These features are correlated, but keeping them in the
+model as individual features seemed to make sense to us. Because we
+were already getting near-perfect performance, we could develop more
+sophisticated measurements of performance if we had time.
+
+One way of evaluating features individually is through an
+information-gain metric, which measures the decrease in entropy
+(increase in information) associated with a feature individually. This
+metric could be especially useful because entropy reduction is used in
+the decision trees that we used. If we rank each of the equality-field
+features, we get the following ranking of features from "most
+important" to "least important":
+
+name
+street_address
+latitude
+longitude
+postal_code
+website
+locality
+region
+country
+id
+
+(We did not clean the formatting of the phone number for this mini-evaluation). 
+
+Perhaps as expected, name and street_address are useful equality
+features, which motivates their inclusion in their feature
+set. Interestingly, even checking for equal latitude and longitude
+could be useful, but we think that the distance feature that we used
+should capture it. The website turns out to be a less useful feature;
+many listings do not have websites, and there can be diverse URLs (a
+dedicated domain vs. a Facebook page, for example). Finally, as a
+sanity check, trying to match on the "id" field would be a fruitless
+exercise, since different id schemes are used in the two datasets. 
+
+With additional time, we could extend this information-gain metric to our other features.
+
+### How did you avoid pairwise comparison of all venues across both datasets?
+
+Our method scores all pairs of possible matches, then applies an
+assignment algorithm that is not linear in the number of
+entities. This was easily feasible in this task because the data was
+small. Even with a larger dataset, though, we could apply the same
+method and avoid super-linear performance by doing the following:
+
+* we could split up the possible pairs by locale (e.g. New York or
+  Boston), so that we do not do cross-city comparisons. Since we only
+  had entries from New York, we did not do this step in our specific
+  implementation.
+
+* to avoid running the Hungarian algorithm on all possible pairs, we
+  could limit the number of edges between entities to sparsify the
+  graph. A simple way could be just to not consider pairs below a
+  certain threshold. 
