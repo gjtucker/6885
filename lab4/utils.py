@@ -25,11 +25,16 @@ def read_matches(file_name):
     return matches
 
 def write_matching(matching, thresh, file_name = "matches_test_hard.csv", debug = False):
+    good = []
     with open(file_name, 'w') as out:
         out.write("locu_id,foursquare_id\n")
         for (k, v) in matching.iteritems():
             if v > thresh: 
                 out.write("%s,%s\n" % k) 
+                good.append((v, k))
+
+    good.sort()
+    print(good[0:20])
 
 #### Features
 def char_splitter(s, n):
@@ -74,7 +79,7 @@ def distance(p1, p2):
     lat2 = p2["latitude"]
     lon2 = p2["longitude"]
 
-    if lat1 is None:
+    if lat1 is None or lat2 is None:
         return 10
 
     x = (lon2 - lon1) * math.cos((lat1 + lat2)/2)
@@ -198,8 +203,6 @@ def sim2(x, y):
             jaccard_score(x, y, "street_address"), \
             compute_equal_phones(x, y), \
             distance(x, y), \
-            1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
-            1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
             1 if (x["name"] == y["name"]) else 0]
 
 def featurize(locu, four, sim):
