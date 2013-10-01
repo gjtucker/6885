@@ -2,10 +2,10 @@ import utils
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import cross_validation
-from sklearn import metrics
 import sys
 from sklearn.externals import joblib
 import cPickle
+from tfidf import Tfidf
 
 def run_classifier_learning(X, y, models, file_name, n_jobs = 5, \
         debug = False):
@@ -15,7 +15,7 @@ def run_classifier_learning(X, y, models, file_name, n_jobs = 5, \
     for (name, model) in models.iteritems():
         sys.stderr.write("CV on model %s\n" % name)
         score = np.mean(cross_validation.cross_val_score(model, X, y, \
-                cv = 2, n_jobs = n_jobs))
+                cv = 10, n_jobs = n_jobs))
         if score > best_score:
             best_score = score
             best_model = name 
@@ -42,25 +42,6 @@ def run_classifier_learning(X, y, models, file_name, n_jobs = 5, \
         # positives, TODO
     
     return (best_model, best_score)
-
-def featurize(locu, four, sim):
-    X = []
-    index = []
-    for (k_a, a) in locu.iteritems():
-        for (k_b, b) in four.iteritems():
-            X.append(sim(a, b))
-            index.append((k_a, k_b))
-    return (X, index)
-
-def get_y(index, matches):
-    y = [] 
-
-    for (k_a, k_b) in index:
-        if (k_a, k_b) in matches:
-            y.append(True)
-        else:
-            y.append(False)
-    return y
 
 # ----------------
 # Main
@@ -95,25 +76,10 @@ del matches_hard[("e3f9d84c0c989f2e7928", "51e25e57498e535de72f03e7")]
 del matches_hard[("66ef54d76ff989a91d52", "51c9e1dd498e33ecd8670892")]
 del matches_hard[("edeba23f215dcc702220", "51a11cbc498e4083823909f1")]
 
+# Extra matches
+matches_hard_test = utils.read_matches("matches_test_hard.csv")
 matches_easy = utils.read_matches("matches_train.csv")
 matches_easy_test = utils.read_matches("matches_test.csv")
-
-#get word statistics for IDF-type features
-sys.stderr.write( "Getting tf-idf statistics..." )
-tfidf_obj = Tfidf( locu, four, "name" )
-sys.stderr.write( "done.\n" )
-
-
-def sim(x, y):
-    return [utils.jaccard_char_score(x, y, ["name"]), \
-            utils.jaccard_char_score(x, y, ["street_address"]), \
-            utils.faster_jaccard_score_tfidf(x, y, "name", tfidf_obj), \
-            utils.jaccard_score(x, y, "street_address"), \
-            utils.compute_equal_phones(x, y), \
-            utils.distance(x, y), \
-            1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
-            1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
-            1 if (x["name"] == y["name"]) else 0]
 
 # Compiling data sets
 try:
@@ -122,32 +88,43 @@ try:
     sys.stderr.write("Loading data from cache.")
 except IOError:
     sys.stderr.write( "Featurizing easy dataset..." )
-    (X_easy, index_easy) = featurize(locu_easy, four_easy, sim)
-    y_easy = get_y(index_easy, matches_easy)
+    (X_easy, index_easy) = utils.featurize(locu_easy, four_easy, utils.sim)
+    y_easy = utils.get_y(index_easy, matches_easy)
     sys.stderr.write( "done.\n" )
 
     sys.stderr.write( "Featurizing easy test dataset..." )
-    (X_easy_test, index_easy_test) = featurize(locu_easy_test, four_easy_test, sim)
-    y_easy_test = get_y(index_easy_test, matches_easy_test) 
+    (X_easy_test, index_easy_test) = utils.featurize(locu_easy_test, four_easy_test, utils.sim)
+    y_easy_test = utils.get_y(index_easy_test, matches_easy_test) 
     sys.stderr.write( "done.\n" )
 
     sys.stderr.write( "Featurizing hard dataset..." )
-    (X, index) = featurize(locu, four, sim)
-    y = get_y(index, matches_hard) 
+    (X, index) = utils.featurize(locu, four, utils.sim)
+    y = utils.get_y(index, matches_hard) 
     sys.stderr.write( "done.\n" )
 
-    X_tot = X + X_easy + X_easy_test
-    y_tot = y + y_easy + y_easy_test
+    sys.stderr.write( "Featurizing hard test dataset..." )
+    (X_hard_test, index_hard_test) = utils.featurize(locu_test, four_test, utils.sim)
+    y_hard_test = utils.get_y(index_hard_test, matches_hard_test) 
+
+    X_tot = X + X_easy + X_easy_test + X_hard_test
+    y_tot = y + y_easy + y_easy_test + y_hard_test
     
     with open("working/locu_classifier.cache", "wb") as out:
         cPickle.dump((X_tot, y_tot), out)
 
-
-clf = RandomForestClassifier(n_estimators = 64, n_jobs = 4)
-
 # Learning
+
+classifier_model_file = sys.argv[1]
+
 sys.stderr.write( "Fitting classifier..." )
-models = {"RF trees = 64" : clf, \
-        "RF trees = 32" : RandomForestClassifier(n_estimators = 32, n_jobs = 4)}
-(model, score) = run_classifier_learning(X_tot, np.array(y_tot), models, "tmp.pkl", n_jobs = 1)
+models = { "RF trees = 64, auto" : RandomForestClassifier(n_estimators = 64, \
+                n_jobs = 10), \
+           "RF trees = 64, sqrt" : RandomForestClassifier(n_estimators = 64, \
+                n_jobs = 10, max_features = "sqrt"), \
+           "RF trees = 64, log2" : RandomForestClassifier(n_estimators = 64, \
+                n_jobs = 10, max_features = "log2"), \
+        }
+(model, score) = run_classifier_learning(X_tot, np.array(y_tot), \
+        models, classifier_model_file, n_jobs = 1)
+
 sys.stderr.write( "done.\n" )

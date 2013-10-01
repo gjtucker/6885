@@ -30,19 +30,8 @@ def write_matching(matching, thresh, file_name = "matches_test_hard.csv", debug 
         for (k, v) in matching.iteritems():
             if v > thresh: 
                 out.write("%s,%s\n" % k) 
-            
-            if debug:
-                print_obj(locu[i])
-                print_obj(four[j])
-                print("\n")
-
 
 #### Features
-def string_match_score(p1,p2,field):
-    s1 = p1[field]
-    s2 = p2[field]
-    return -editdist.distance(s1.lower(),s2.lower())/float(len(s1))
-
 def char_splitter(s, n):
     res = set()
     if len(s) < n:
@@ -57,8 +46,8 @@ def compute_equal_phones(x, y):
     phone_x = x["phone"]
     phone_y = y["phone"]
 
-    if phone_x is None and phone_y is None:
-        return 1
+    #if phone_x is None and phone_y is None:
+    #    return 1
     if phone_x is None or phone_y is None:
         return 0
     phone_y = phone_y[1:4] + phone_y[6:9] + phone_y[10:]
@@ -177,3 +166,58 @@ def jaccard_score_tfidf(locu, four, p1,p2,field):
     uscore = sum([tfidf.get_score(word) for word in u])
 
     return 0 if uscore == 0 else float(iscore) / uscore
+
+def is_none(x):
+    return 1 if x is None else 0
+
+def is_equal(x, y):
+    if x is None or y is None:
+        return 0
+    return x == y
+
+def sim(x, y):
+    return [jaccard_char_score(x, y, ["name"]), \
+            jaccard_char_score(x, y, ["street_address"]), \
+            #utils.jaccard_score_tfidf(locu, four, x, y, "name"), \
+            jaccard_score(x, y, "street_address"), \
+            compute_equal_phones(x, y), \
+            distance(x, y), \
+            1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
+            1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
+            1 if (x["name"] == y["name"]) else 0]
+
+def sim2(x, y):
+    return [jaccard_char_score(x, y, ["name"]), \
+            jaccard_char_score(x, y, ["street_address"]), \
+            is_none(x["street_address"]), \
+            is_none(y["street_address"]), \
+            is_none(x["phone"]), \
+            is_none(y["phone"]), \
+            is_equal(x["postal_code"], y["postal_code"]), \
+            #utils.jaccard_score_tfidf(locu, four, x, y, "name"), \
+            jaccard_score(x, y, "street_address"), \
+            compute_equal_phones(x, y), \
+            distance(x, y), \
+            1 if (x["phone"] is None) != (y["phone"] is None) else 0, \
+            1 if (x["street_address"] is None) != (y["street_address"] is None) else 0, \
+            1 if (x["name"] == y["name"]) else 0]
+
+def featurize(locu, four, sim):
+    X = []
+    index = []
+    for (k_a, a) in locu.iteritems():
+        for (k_b, b) in four.iteritems():
+            X.append(sim(a, b))
+            index.append((k_a, k_b))
+    return (X, index)
+
+def get_y(index, matches):
+    y = [] 
+
+    for (k_a, k_b) in index:
+        if (k_a, k_b) in matches:
+            y.append(True)
+        else:
+            y.append(False)
+    return y
+
