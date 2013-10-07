@@ -1,0 +1,77 @@
+George Tucker
+
+1) List the top TF-IDF terms for Enron's key people:
+Kenneth Lay, Founder, Chairman and CEO
+Jeffrey Skilling, former President, and COO
+Andrew Fastow, former CFO
+Rebecca Mark-Jusbasche, former Vice Chairman, Chairman and CEO of Enron International
+Stephen F. Cooper, Interim CEO and CRO
+
+Top tfidf terms for kenneth.lay@enron.com:
+Term: program, tfidf: 184.281
+Term: kenneth, tfidf: 106.289
+Term: graduates, tfidf: 85.2048
+Term: cindy, tfidf: 77.7378
+Term: enron's, tfidf: 69.9225
+Term: committee, tfidf: 68.9891
+Term: visions, tfidf: 68.6473
+Term: continue, tfidf: 68.1917
+Term: enron, tfidf: 61.5724
+Term: recruit, tfidf: 57.7248
+Top tfidf terms for jeff.skilling@enron.com:
+Term: jeff, tfidf: 365.491
+Term: sherri, tfidf: 211.535
+Term: murdock, tfidf: 187.258
+Term: turkish, tfidf: 165.282
+Term: joannie, tfidf: 158.904
+Term: globe, tfidf: 155.486
+Term: trakya, tfidf: 152.154
+Term: skilling, tfidf: 151.304
+Term: macerich, tfidf: 130.882
+Term: erica, tfidf: 123.166
+Top tfidf terms for andrew.fastow@enron.com:
+Term: petrobras, tfidf: 140.813
+Term: asep, tfidf: 118.923
+Term: vagner, tfidf: 79.2821
+Term: transaction, tfidf: 30.7788
+Term: sunil, tfidf: 30.7453
+Term: highstar, tfidf: 29.3813
+Term: creditex, tfidf: 25.5719
+Term: victor, tfidf: 25.5467
+Term: approval, tfidf: 23.3494
+Term: andy, tfidf: 23.3366
+Missing rebecca.mark-jusbasche@enron.com
+Top tfidf terms for cooper@enron.com:
+Term: commercialization, tfidf: 34.1445
+Term: central, tfidf: 13.1755
+Term: management, tfidf: 11.6517
+Term: june, tfidf: 10.0891
+Term: time, tfidf: 5.06633
+
+2) How did you compute TF-IDF on the whole corpus? What was easy, what was hard?
+
+I considered all of the emails sent by a single sender as a document.  I first computed the counts required for the idf denominators.  Then the term frequencies for each sender and finally joined both of these together.  The first two steps generated small enough files that I could do the final join on my local computer using mrjob.  It was a little difficult to get my head around the join, but afterwards it seems straightforward.
+
+I did want to compute the total number of distinct senders and then add that to the idf calculation, but I couldn't seem to do that without manually printing it out.
+
+3) The from and to,cc,bcc fields in each email define directed edges (from --> to) between each person (node). These edges form a graph.
+
+Sketch a description of how you would use EMR to run page rank on this graph. What would be some pain points?
+
+Parse the data into records like:
+
+(node, pr_val, list of out edges)
+
+For each node, we can loop through the edges A -> B and output a record
+
+(type = pr_val, B, pr_val/len(list of out edges))
+
+and one record to encode the graph structure for the next round of map/reduce
+
+(type = graph, A, list of out edges)
+
+In the reduce stage, we combine the pr_vals and output a record
+
+(node, new_pr_val, list of out edges)
+
+Conceptually coding it in map/reduce seems fine.  However, writing all of this data out to disk each iteration seems wasteful.  If there was some way of connecting the nodes directly instead of having a hashing/sorting step each iteration that would be a lot faster I imagine.
